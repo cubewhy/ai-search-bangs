@@ -8,12 +8,15 @@ https://search.lunarclient.top/query?q=%s&engine=%s
 
 ## Supported Search Engines
 
-| Friendly Name | Name in Query |
-| ------------- | ------------- |
-| Duckduckgo    | ddg           |
-| Google        | google        |
-| Bing          | bing          |
-| Baidu         | baidu         |
+| Friendly Name   | Name in Query |
+| --------------- | ------------- |
+| Duckduckgo      | ddg           |
+| Duckduckgo-lite | ddg-lite      |
+| Duckduckgo-html | ddg-html      |
+| Google          | google        |
+| Bing            | bing          |
+| Baidu           | baidu         |
+| Sogou           | sogou         |
 
 ## Roadmap
 
