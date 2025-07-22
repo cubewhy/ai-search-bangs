@@ -56,7 +56,6 @@ impl SearchService for SearchServiceImpl {
         search_engine: &str,
     ) -> Result<GenerateQueryResult, SearchError> {
         // get search engine name and address
-        info!("Generate query using engine {search_engine} with prompt {query_prompt}");
         let search_engine: Box<dyn SearchEngine> = match search_engine.to_lowercase().as_str() {
             "ddg" | "duckduckgo" => Box::new(Duckduckgo::default()),
             "ddg-lite" | "duckduckgo-lite" => Box::new(DuckduckgoLite::default()),
@@ -67,6 +66,8 @@ impl SearchService for SearchServiceImpl {
             "sogou" => Box::new(Sogou::default()),
             _ => return Err(SearchError::UnknownEngine(search_engine.to_string())),
         };
+
+        info!("Generate query using engine {} with prompt {query_prompt}", search_engine.name());
 
         // TODO: move this into factory function
         let user_query_request = UserQueryRequest {
@@ -109,7 +110,11 @@ impl SearchService for SearchServiceImpl {
         let encoded_query = urlencoding::encode(&response.query);
         let url = search_engine.generate_url(&encoded_query.to_string());
 
-        info!("Query successful generated for {} :{query_prompt} -> {}", search_engine.name(), &response.query);
+        info!(
+            "Query successful generated for {} :{query_prompt} -> {}",
+            search_engine.name(),
+            &response.query
+        );
 
         Ok(GenerateQueryResult { url })
     }
