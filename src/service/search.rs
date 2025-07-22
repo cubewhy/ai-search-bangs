@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use thiserror::Error;
 
 use crate::{
-    llm::{LLMPrompt, LargeLanguageModel},
+    llm::{LLMError, LLMPrompt, LargeLanguageModel},
     model::{
         GenerateQueryResult, UserQueryRequest,
         search::{
@@ -19,7 +19,7 @@ struct GenerateSearchQueryResponse {
 #[derive(Error, Debug)]
 pub enum SearchError {
     #[error("Error when querying AI")]
-    Ai,
+    Ai(#[from] LLMError),
     #[error("Unknown search engine {0}")]
     UnknownEngine(String),
 
@@ -88,9 +88,11 @@ impl SearchService for SearchServiceImpl {
         // send prompt to ai
         let ai_response = self.llm.query(&self.llm_model, &contents).await;
 
-        let Ok(mut content) = ai_response else {
-            return Err(SearchError::Ai);
+        let mut content = match ai_response {
+            Ok(content) => content,
+            Err(err) =>  return Err(SearchError::from(err)),
         };
+        
         // parse response
         if content.starts_with("```json") {
             content = content
