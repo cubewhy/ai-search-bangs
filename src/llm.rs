@@ -171,3 +171,54 @@ struct GeminiThinkingConfig {
     #[serde(rename = "thinkingBudget")]
     thinking_budget: i32,
 }
+
+mod gemini_response {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Root {
+        pub candidates: Vec<Candidate>,
+        pub usage_metadata: UsageMetadata,
+        pub model_version: String,
+        pub response_id: String,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Candidate {
+        pub content: Content,
+        pub finish_reason: String,
+        pub index: i64,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Content {
+        pub parts: Vec<Part>,
+        pub role: String,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Part {
+        pub text: String,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct UsageMetadata {
+        pub prompt_token_count: i64,
+        pub candidates_token_count: i64,
+        pub total_token_count: i64,
+        pub prompt_tokens_details: Vec<PromptTokensDetail>,
+        pub thoughts_token_count: i64,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct PromptTokensDetail {
+        pub modality: String,
+        pub token_count: i64,
+    }
+}

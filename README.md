@@ -15,6 +15,12 @@ https://search.lunarclient.top/query?q=%s&engine=%s
 | Bing          | bing          |
 | Baidu         | baidu         |
 
+## Roadmap
+
+[ ] Caching
+[ ] Request limits
+[ ] Frontend
+
 ## License
 
 This work is licensed under GPL-3.0
