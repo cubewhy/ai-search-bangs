@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use log::info;
 use thiserror::Error;
 
 use crate::{
@@ -55,6 +56,7 @@ impl SearchService for SearchServiceImpl {
         search_engine: &str,
     ) -> Result<GenerateQueryResult, SearchError> {
         // get search engine name and address
+        info!("Generate query using engine {search_engine} with prompt {query_prompt}");
         let search_engine: Box<dyn SearchEngine> = match search_engine.to_lowercase().as_str() {
             "ddg" | "duckduckgo" => Box::new(Duckduckgo::default()),
             "ddg-lite" | "duckduckgo-lite" => Box::new(DuckduckgoLite::default()),
@@ -90,9 +92,9 @@ impl SearchService for SearchServiceImpl {
 
         let mut content = match ai_response {
             Ok(content) => content,
-            Err(err) =>  return Err(SearchError::from(err)),
+            Err(err) => return Err(SearchError::from(err)),
         };
-        
+
         // parse response
         if content.starts_with("```json") {
             content = content
@@ -106,6 +108,8 @@ impl SearchService for SearchServiceImpl {
 
         let encoded_query = urlencoding::encode(&response.query);
         let url = search_engine.generate_url(&encoded_query.to_string());
+
+        info!("Query successful generated for {} :{query_prompt} -> {}", search_engine.name(), &response.query);
 
         Ok(GenerateQueryResult { url })
     }

@@ -1,7 +1,6 @@
 use std::string::FromUtf8Error;
 
 use async_trait::async_trait;
-use futures_util::StreamExt;
 use reqwest::Client;
 use thiserror::Error;
 

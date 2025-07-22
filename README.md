@@ -17,7 +17,7 @@ https://search.lunarclient.top/query?q=%s&engine=%s
 
 ## Roadmap
 
-[ ] Logging
+[x] Logging
 [ ] Caching
 [ ] Request limits
 [ ] Frontend
