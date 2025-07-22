@@ -49,7 +49,9 @@ async fn ai_search(
 }
 
 pub fn scope() -> Scope {
-    let llm = Gemini::new(&env::var("GEMINI_KEY").unwrap()); // TODO: api key
+    let api = env::var("GEMINI_API").unwrap_or("https://generativelanguage.googleapis.com".to_string());
+    let api_key = env::var("GEMINI_KEY").expect("No api key provided");
+    let llm = Gemini::new(&api, &api_key);
     let llm_model = "gemini-2.5-flash-lite-preview-06-17";
 
     let context = Context {

@@ -40,13 +40,15 @@ pub trait LargeLanguageModel: Send + Sync {
 #[derive(Clone, Debug)]
 pub struct Gemini {
     client: Client,
+    api: String,
     api_key: String,
 }
 
 impl Gemini {
-    pub fn new(api_key: &str) -> Self {
+    pub fn new(api: &str, api_key: &str) -> Self {
         Self {
             client: Client::new(),
+            api: api.to_string(),
             api_key: api_key.to_string(),
         }
     }
@@ -69,7 +71,8 @@ impl LargeLanguageModel for Gemini {
         };
 
         let mut stream = self.client.post(format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?key={}",
+            "{}/v1beta/models/{}:streamGenerateContent?key={}",
+            self.api,
             model_id,
             self.api_key
         )).json(&request_body)
