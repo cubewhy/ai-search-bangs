@@ -1,0 +1,16 @@
+[package]
+name = "ai_search_bangs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4"
+reqwest = { version = "0.12", features = ["stream", "json"] }
+async-trait = "0.1"
+anyhow = "1"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenvy = "0.15"
+futures-util = "0.3.31"
+urlencoding = "2.1.3"
