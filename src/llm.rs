@@ -74,8 +74,10 @@ impl LargeLanguageModel for Gemini {
             "{}/v1beta/models/{}:streamGenerateContent?key={}",
             self.api,
             model_id,
-            self.api_key
-        )).json(&request_body)
+            &self.api_key
+        ))
+        .header("x-goog-api-key", &self.api_key)
+        .json(&request_body)
         .send()
         .await?
         .bytes_stream();
