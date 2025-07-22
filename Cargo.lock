@@ -210,7 +210,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ai_search_bangs"
+name = "ai-search-bangs"
 version = "0.1.0"
 dependencies = [
  "actix-web",
