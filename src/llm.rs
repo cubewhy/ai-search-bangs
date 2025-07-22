@@ -70,62 +70,53 @@ impl LargeLanguageModel for Gemini {
             },
         };
 
-        let mut stream = self.client.post(format!(
-            "{}/v1beta/models/{}:streamGenerateContent?key={}",
-            self.api,
-            model_id,
-            &self.api_key
-        ))
-        .header("x-goog-api-key", &self.api_key)
-        .json(&request_body)
-        .send()
-        .await?
-        .bytes_stream();
-
-        let mut response_buf = String::new();
-
-        // receive content from stream
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
-            response_buf.push_str(&String::from_utf8(chunk.to_vec())?);
-        }
+        let response_text = self
+            .client
+            .post(format!(
+                "{}/v1beta/models/{}:generateContent?key={}",
+                self.api, model_id, &self.api_key
+            ))
+            .header("x-goog-api-key", &self.api_key)
+            .json(&request_body)
+            .send()
+            .await?
+            .text()
+            .await?;
 
         // parse content_buf
-        let response: serde_json::Value = serde_json::from_str(&response_buf)?;
+        let response: serde_json::Value = serde_json::from_str(&response_text)?;
 
         let mut content_buf = String::new();
 
-        for part in response.as_array().unwrap().into_iter() {
-            // TODO: replace unwrap
-            for part in part
-                .as_object()
-                .unwrap()
-                .get("candidates")
+        // TODO: replace unwrap
+        for part in response
+            .as_object()
+            .unwrap()
+            .get("candidates")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .iter()
+        {
+            let candidate = part.as_object().unwrap();
+            let content = candidate.get("content").unwrap().as_object().unwrap();
+            let result: Vec<String> = content
+                .get("parts")
                 .unwrap()
                 .as_array()
                 .unwrap()
                 .iter()
-            {
-                let candidate = part.as_object().unwrap();
-                let content = candidate.get("content").unwrap().as_object().unwrap();
-                let result: Vec<String> = content
-                    .get("parts")
-                    .unwrap()
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|part| {
-                        part.as_object()
-                            .unwrap()
-                            .get("text")
-                            .unwrap()
-                            .as_str()
-                            .unwrap()
-                            .to_string()
-                    })
-                    .collect();
-                result.iter().for_each(|item| content_buf.push_str(item));
-            }
+                .map(|part| {
+                    part.as_object()
+                        .unwrap()
+                        .get("text")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string()
+                })
+                .collect();
+            result.iter().for_each(|item| content_buf.push_str(item));
         }
 
         Ok(content_buf)
