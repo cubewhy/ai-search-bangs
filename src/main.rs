@@ -1,6 +1,10 @@
-use std::env;
+use std::{env, num::NonZeroU32, sync::Arc, time::Duration};
 
-use actix_web::{App, HttpServer};
+use actix_files as fs;
+use actix_web::{web, App, HttpServer, get, HttpResponse, Responder};
+use governor::{Quota, RateLimiter};
+use llm::gemini::Gemini;
+use service::search::{SearchServiceImpl, SearchService};
 use log::info;
 
 mod controller;
@@ -19,11 +23,59 @@ async fn main() -> anyhow::Result<()> {
         .parse()
         .expect("Failed to parse port");
 
+    let gemini_key = env::var("GEMINI_KEY").expect("Gemini key is not set");
+    let gemini_api =
+        env::var("GEMINI_API").unwrap_or("https://generativelanguage.googleapis.com".to_string());
+    let temperature: f32 = env::var("TEMPERATURE")
+        .unwrap_or("0".to_string())
+        .parse()
+        .expect("Failed to parse temperature");
+    let prompt_file = env::var("PROMPT_FILE").unwrap_or("prompt.md".to_string());
+    let requests_per_minute: i32 = env::var("REQUESTS_PER_MINUTE")
+        .unwrap_or("-1".to_string())
+        .parse()
+        .expect("Failed to parse requests per minute");
+
+    let rate_limiter = if requests_per_minute > 0 {
+        let quota = Quota::per_minute(NonZeroU32::new(requests_per_minute as u32).unwrap());
+        Some(Arc::new(RateLimiter::direct(quota)))
+    } else {
+        None
+    };
+
+    let llm_model = env::var("LLM_MODEL").unwrap_or("gemini-1.5-flash".to_string());
+
+    let llm = Gemini::new(gemini_api, gemini_key, temperature);
+    let search_service = Arc::new(SearchServiceImpl::new(
+        Box::new(llm),
+        llm_model,
+        prompt_file,
+    ));
+
     info!("Start AI search bangs service at {host}:{port}");
 
-    HttpServer::new(|| App::new().service(controller::search::scope()))
-        .bind((host, port))?
-        .run()
-        .await?;
+    HttpServer::new(move || {
+        let mut app = App::new()
+            .app_data(web::Data::from(search_service.clone()))
+            .service(controller::search::scope())
+            .service(fs::Files::new("/static", "static"))
+            .service(index);
+
+        if let Some(limiter) = rate_limiter.clone() {
+            app = app.app_data(web::Data::from(limiter));
+        }
+        
+        app
+    })
+    .bind((host, port))?
+    .run()
+    .await?;
     Ok(())
+}
+
+#[get("/")]
+async fn index() -> impl Responder {
+    HttpResponse::Found()
+        .append_header(("Location", "/static/index.html"))
+        .finish()
 }

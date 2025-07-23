@@ -1,40 +1,41 @@
-use std::env;
+use std::sync::Arc;
 
 use actix_web::{
-    HttpRequest, HttpResponse, Responder, Scope,
     body::BoxBody,
     get,
     web::{self, Redirect},
+    HttpRequest, HttpResponse, Responder, Scope,
 };
+use governor::RateLimiter;
 
 use crate::{
-    llm::Gemini,
     model::AiSearchQuery,
-    service::search::{SearchService, SearchServiceImpl},
+    service::search::SearchService,
 };
-
-struct Context {
-    pub search_service: Box<dyn SearchService>,
-}
 
 #[get("ai")]
 async fn ai_search(
     req: HttpRequest,
     query: web::Query<AiSearchQuery>,
-    context: web::Data<Context>,
+    search_service: web::Data<Arc<dyn SearchService>>,
+    rate_limiter: web::Data<Option<Arc<RateLimiter>>>,
 ) -> impl Responder {
+    if let Some(limiter) = rate_limiter.get_ref() {
+        if let Err(_) = limiter.check() {
+            return HttpResponse::TooManyRequests().body("Too many requests");
+        }
+    }
+>>>>>>>
+[Response interrupted by user]
     let request = query.into_inner();
-    // do query
     let Some(query) = request.q else {
         return HttpResponse::BadRequest().body("no search content provided");
     };
-    let Some(search_engine) = request.service else {
-        return HttpResponse::BadRequest().body("no search engine provided");
-    };
+    let search_engine = request.engine.unwrap_or("google".to_string());
+    let language = request.language.unwrap_or("English".to_string());
 
-    let result = context
-        .search_service
-        .generate_query(&query, &search_engine)
+    let result = search_service
+        .generate_query(&query, &search_engine, &language)
         .await;
 
     let result = match result {
@@ -49,15 +50,5 @@ async fn ai_search(
 }
 
 pub fn scope() -> Scope {
-    let api = env::var("GEMINI_API").unwrap_or("https://generativelanguage.googleapis.com".to_string());
-    let api_key = env::var("GEMINI_KEY").expect("No api key provided");
-    let llm = Gemini::new(&api, &api_key);
-    let llm_model = "gemini-2.5-flash-lite-preview-06-17";
-
-    let context = Context {
-        search_service: Box::new(SearchServiceImpl::new(Box::new(llm), llm_model.to_string())),
-    };
-    Scope::new("/search")
-        .app_data(web::Data::new(context))
-        .service(ai_search)
+    Scope::new("/search").service(ai_search)
 }

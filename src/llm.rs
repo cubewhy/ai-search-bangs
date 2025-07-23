@@ -41,14 +41,16 @@ pub struct Gemini {
     client: Client,
     api: String,
     api_key: String,
+    temperature: f32,
 }
 
 impl Gemini {
-    pub fn new(api: &str, api_key: &str) -> Self {
+    pub fn new(api: String, api_key: String, temperature: f32) -> Self {
         Self {
             client: Client::new(),
-            api: api.to_string(),
-            api_key: api_key.to_string(),
+            api,
+            api_key,
+            temperature,
         }
     }
 }
@@ -62,10 +64,8 @@ impl LargeLanguageModel for Gemini {
                 .map(|prompt| GeminiPrompt::from(prompt))
                 .collect(),
             generation_config: GeminiGenerationConfig {
-                response_mime_type: "text/plain".to_string(),
-                thinking_config: GeminiThinkingConfig {
-                    thinking_budget: -1,
-                },
+                response_mime_type: "application/json".to_string(),
+                temperature: self.temperature,
             },
         };
 
@@ -161,14 +161,7 @@ impl GeminiPromptPart {
 struct GeminiGenerationConfig {
     #[serde(rename = "responseMimeType")]
     response_mime_type: String,
-    #[serde(rename = "thinkingConfig")]
-    thinking_config: GeminiThinkingConfig,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-struct GeminiThinkingConfig {
-    #[serde(rename = "thinkingBudget")]
-    thinking_budget: i32,
+    temperature: f32,
 }
 
 mod gemini_response {
