@@ -1,10 +1,10 @@
-use std::{env, num::NonZeroU32, sync::Arc, time::Duration};
+use std::{env, num::NonZeroU32, sync::Arc};
 
 use actix_files as fs;
-use actix_web::{web, App, HttpServer, get, HttpResponse, Responder};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use governor::{Quota, RateLimiter};
-use llm::gemini::Gemini;
-use service::search::{SearchServiceImpl, SearchService};
+use llm::Gemini;
+use service::search::SearchServiceImpl;
 use log::info;
 
 mod controller;
