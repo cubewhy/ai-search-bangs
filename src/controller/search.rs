@@ -61,7 +61,7 @@ async fn ai_search(
         user.last_request_date = today;
     }
 
-    if user.request_count >= daily_limit {
+    if user.request_count >= daily_limit as i64 {
         return HttpResponse::TooManyRequests().body("Daily request limit exceeded");
     }
 

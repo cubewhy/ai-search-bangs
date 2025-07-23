@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET request_count = request_count + 1, last_request_date = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ee753fc0f59e5f7685ceb15e0b17e170c1cb8b398822904d68cb8379de63d848"
+}

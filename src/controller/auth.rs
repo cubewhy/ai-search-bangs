@@ -73,12 +73,13 @@ async fn discord_callback(
 
     let user_id: i64 = discord_user.id.parse().unwrap();
 
+    let today = chrono::Utc::now().date_naive();
     match sqlx::query!(
         "INSERT INTO users (id, username, last_request_date) VALUES (?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET username = excluded.username",
         user_id,
         discord_user.username,
-        chrono::Utc::now().date_naive()
+        today
     )
     .execute(pool.get_ref())
     .await
