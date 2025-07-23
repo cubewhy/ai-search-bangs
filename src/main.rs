@@ -2,7 +2,7 @@ use std::{env, num::NonZeroU32, sync::Arc};
 
 use actix_files as fs;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
-use governor::{Quota, RateLimiter};
+use governor::{clock::DefaultClock, Quota, RateLimiter};
 use llm::Gemini;
 use service::search::SearchServiceImpl;
 use log::info;
@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
         .parse()
         .expect("Failed to parse requests per minute");
 
-    let rate_limiter = if requests_per_minute > 0 {
+    let rate_limiter: Option<Arc<RateLimiter<governor::state::direct::NotKeyed, governor::state::InMemoryState, DefaultClock>>> = if requests_per_minute > 0 {
         let quota = Quota::per_minute(NonZeroU32::new(requests_per_minute as u32).unwrap());
         Some(Arc::new(RateLimiter::direct(quota)))
     } else {

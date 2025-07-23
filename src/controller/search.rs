@@ -6,7 +6,7 @@ use actix_web::{
     web::{self, Redirect},
     HttpRequest, HttpResponse, Responder, Scope,
 };
-use governor::{RateLimiter, state::direct::NotKeyed, state::InMemoryState};
+use governor::{clock::DefaultClock, RateLimiter, state::direct::NotKeyed, state::InMemoryState};
 
 use crate::{
     model::AiSearchQuery,
@@ -18,7 +18,7 @@ async fn ai_search(
     req: HttpRequest,
     query: web::Query<AiSearchQuery>,
     search_service: web::Data<Arc<dyn SearchService>>,
-    rate_limiter: web::Data<Option<Arc<RateLimiter<NotKeyed, InMemoryState>>>>,
+    rate_limiter: web::Data<Option<Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
 ) -> impl Responder {
     if let Some(limiter) = rate_limiter.get_ref() {
         if let Err(_) = limiter.check() {
