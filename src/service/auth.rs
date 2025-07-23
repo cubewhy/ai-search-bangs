@@ -9,6 +9,8 @@ pub enum AuthError {
     Reqwest(#[from] reqwest::Error),
     #[error("Serde error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("Discord API error: {0}")]
+    DiscordApiError(String),
 }
 
 #[derive(Deserialize, Debug)]
@@ -92,10 +94,7 @@ impl AuthService for AuthServiceImpl {
         if !response.status().is_success() {
             let error_text = response.text().await?;
             log::error!("Discord API error: {}", error_text);
-            return Err(AuthError::Reqwest(reqwest::Error::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Discord API returned an error",
-            ))));
+            return Err(AuthError::DiscordApiError(error_text));
         }
 
         let user = response.json::<DiscordUser>().await?;
