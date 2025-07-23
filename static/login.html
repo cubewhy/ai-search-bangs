@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Search</h1>
+        <p>Please log in to continue</p>
+        <form action="/auth/discord/login" method="get">
+            <div class="cf-turnstile" data-sitekey="YOUR_SITE_KEY" data-callback="onTurnstileSuccess"></div>
+            <button type="submit" class="discord-btn" id="login-btn" disabled>Login with Discord</button>
+        </form>
+    </div>
+    <script>
+        function onTurnstileSuccess(token) {
+            document.getElementById('login-btn').disabled = false;
+        }
+    </script>
+</body>
+</html>

@@ -1,11 +1,13 @@
 use std::{env, num::NonZeroU32, sync::Arc};
 
 use actix_files as fs;
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_web::{cookie::Key, get, web, App, HttpResponse, HttpServer, Responder};
 use governor::{clock::DefaultClock, Quota, RateLimiter};
 use llm::Gemini;
-use service::search::SearchServiceImpl;
 use log::info;
+use service::{auth::AuthServiceImpl, search::SearchServiceImpl, turnstile::TurnstileService};
+use sqlx::SqlitePool;
 
 mod controller;
 pub mod llm;
@@ -22,6 +24,12 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or("8080".to_string())
         .parse()
         .expect("Failed to parse port");
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = SqlitePool::connect(&database_url).await?;
+
+    let session_secret_key = env::var("SESSION_SECRET_KEY").expect("SESSION_SECRET_KEY must be set");
+    let session_key = Key::from(session_secret_key.as_bytes());
 
     let gemini_key = env::var("GEMINI_KEY").expect("Gemini key is not set");
     let gemini_api =
@@ -52,25 +60,40 @@ async fn main() -> anyhow::Result<()> {
         prompt_file,
     ));
 
+    let discord_client_id = env::var("DISCORD_CLIENT_ID").expect("DISCORD_CLIENT_ID must be set");
+    let discord_client_secret =
+        env::var("DISCORD_CLIENT_SECRET").expect("DISCORD_CLIENT_SECRET must be set");
+    let discord_redirect_uri =
+        env::var("DISCORD_REDIRECT_URI").expect("DISCORD_REDIRECT_URI must be set");
+    let auth_service: Arc<dyn service::auth::AuthService> = Arc::new(AuthServiceImpl::new(
+        discord_client_id,
+        discord_client_secret,
+        discord_redirect_uri,
+    ));
+
+    let turnstile_secret_key =
+        env::var("CLOUDFLARE_TURNSTILE_SECRET_KEY").expect("CLOUDFLARE_TURNSTILE_SECRET_KEY must be set");
+    let turnstile_service = Arc::new(TurnstileService::new(turnstile_secret_key));
+
     info!("Start AI search bangs service at {host}:{port}");
 
     HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(search_service.clone()))
+            .app_data(web::Data::new(auth_service.clone()))
+            .app_data(web::Data::new(turnstile_service.clone()))
             .app_data(web::Data::new(rate_limiter.clone()))
+            .wrap(SessionMiddleware::new(
+                CookieSessionStore::default(),
+                session_key.clone(),
+            ))
+            .service(controller::auth::service())
             .service(controller::search::service())
-            .service(fs::Files::new("/static", "static"))
-            .service(index)
+            .service(fs::Files::new("/", "static").index_file("index.html"))
     })
     .bind((host, port))?
     .run()
     .await?;
     Ok(())
-}
-
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Found()
-        .append_header(("Location", "/static/index.html"))
-        .finish()
 }
