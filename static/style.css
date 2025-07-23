@@ -1,26 +1,50 @@
+:root {
+    --bg-color: #f0f2f5;
+    --container-bg: #fff;
+    --text-color: #333;
+    --secondary-text-color: #555;
+    --border-color: #ddd;
+    --primary-color: #007bff;
+    --primary-hover-color: #0056b3;
+    --discord-color: #5865F2;
+    --discord-hover-color: #4752C4;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode {
+    --bg-color: #121212;
+    --container-bg: #1e1e1e;
+    --text-color: #e0e0e0;
+    --secondary-text-color: #aaa;
+    --border-color: #444;
+    --shadow-color: rgba(255, 255, 255, 0.1);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background-color: #f0f2f5;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .container {
     text-align: center;
-    background: #fff;
+    background: var(--container-bg);
     padding: 40px;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px var(--shadow-color);
     width: 100%;
     max-width: 600px;
 }
 
 h1 {
     font-size: 3em;
-    color: #333;
+    color: var(--text-color);
     margin-bottom: 30px;
 }
 
@@ -33,20 +57,22 @@ h1 {
     flex-grow: 1;
     padding: 15px;
     font-size: 1.2em;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 8px 0 0 8px;
     outline: none;
     transition: border-color 0.3s;
+    background-color: var(--container-bg);
+    color: var(--text-color);
 }
 
 #search-input:focus {
-    border-color: #007bff;
+    border-color: var(--primary-color);
 }
 
 #search-button {
     padding: 15px 25px;
     font-size: 1.2em;
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 0 8px 8px 0;
@@ -55,7 +81,7 @@ h1 {
 }
 
 #search-button:hover {
-    background-color: #0056b3;
+    background-color: var(--primary-hover-color);
 }
 
 .options {
@@ -71,15 +97,16 @@ h1 {
 .option label {
     margin-right: 10px;
     font-size: 1em;
-    color: #555;
+    color: var(--secondary-text-color);
 }
 
 .option select {
     padding: 8px 12px;
     font-size: 1em;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    background-color: #fff;
+    background-color: var(--container-bg);
+    color: var(--text-color);
 }
 
 .discord-btn {
@@ -88,15 +115,21 @@ h1 {
     padding: 15px 30px;
     font-size: 1.2em;
     color: #fff;
-    background-color: #5865F2;
+    background-color: var(--discord-color);
     border: none;
     border-radius: 8px;
     text-decoration: none;
     transition: background-color 0.3s;
+    cursor: pointer;
 }
 
-.discord-btn:hover {
-    background-color: #4752C4;
+.discord-btn:disabled {
+    background-color: var(--secondary-text-color);
+    cursor: not-allowed;
+}
+
+.discord-btn:hover:not(:disabled) {
+    background-color: var(--discord-hover-color);
 }
 
 #user-status {
@@ -116,4 +149,13 @@ h1 {
 
 #user-status a:hover {
     text-decoration: underline;
+}
+
+#theme-toggle {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
 }
