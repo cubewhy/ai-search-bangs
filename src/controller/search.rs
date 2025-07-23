@@ -20,7 +20,7 @@ async fn ai_search(
     search_service: web::Data<Arc<dyn SearchService>>,
     rate_limiter: web::Data<Option<Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
 ) -> impl Responder {
-    if let Some(limiter) = rate_limiter.get_ref() {
+    if let Some(limiter) = rate_limiter.as_ref() {
         if let Err(_) = limiter.check() {
             return HttpResponse::TooManyRequests().body("Too many requests");
         }
