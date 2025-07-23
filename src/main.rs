@@ -55,17 +55,17 @@ async fn main() -> anyhow::Result<()> {
     info!("Start AI search bangs service at {host}:{port}");
 
     HttpServer::new(move || {
-        let mut app = App::new()
-            .app_data(web::Data::from(search_service.clone()))
-            .service(controller::search::scope())
-            .service(fs::Files::new("/static", "static"))
-            .service(index);
+        let mut search_scope = controller::search::scope()
+            .app_data(web::Data::from(search_service.clone()));
 
         if let Some(limiter) = rate_limiter.clone() {
-            app = app.app_data(web::Data::from(limiter));
+            search_scope = search_scope.app_data(web::Data::from(limiter));
         }
-        
-        app
+
+        App::new()
+            .service(search_scope)
+            .service(fs::Files::new("/static", "static"))
+            .service(index)
     })
     .bind((host, port))?
     .run()
