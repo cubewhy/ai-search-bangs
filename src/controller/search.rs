@@ -47,6 +47,6 @@ async fn ai_search(
         .set_body(BoxBody::new("307 Temporary Redirect"))
 }
 
-pub fn scope() -> Scope {
-    Scope::new("/search").service(ai_search)
+pub fn service() -> Scope {
+    web::scope("/search").service(ai_search)
 }
