@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
             ))
             .service(controller::auth::service())
             .service(controller::search::service())
-            .service(fs::Files::new("/", "static").index_file("index.html"))
+            .service(fs::Files::new("/", "./static").index_file("index.html"))
     })
     .bind((host, port))?
     .run()
