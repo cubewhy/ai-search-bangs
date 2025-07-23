@@ -3,6 +3,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchButton = document.getElementById('search-button');
     const languageSelect = document.getElementById('language-select');
     const engineSelect = document.getElementById('engine-select');
+    const userStatusDiv = document.getElementById('user-status');
+
+    fetch('/auth/me')
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Not logged in');
+        })
+        .then(user => {
+            userStatusDiv.innerHTML = `
+                <span>Welcome, ${user.username}</span>
+                <a href="/auth/logout">Logout</a>
+            `;
+        })
+        .catch(() => {
+            userStatusDiv.innerHTML = '<a href="/login.html">Login</a>';
+        });
 
     const performSearch = () => {
         const query = searchInput.value;

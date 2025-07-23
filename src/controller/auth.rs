@@ -26,8 +26,10 @@ pub struct CallbackQuery {
 pub fn service() -> Scope {
     web::scope("/auth")
         .service(config)
+        .service(me)
         .service(discord_login)
         .service(discord_callback)
+        .service(logout)
 }
 
 #[get("/config")]
@@ -37,6 +39,22 @@ async fn config() -> impl Responder {
     HttpResponse::Ok().json(ConfigResponse {
         turnstile_site_key: site_key,
     })
+}
+
+#[get("/me")]
+async fn me(session: Session, pool: web::Data<SqlitePool>) -> impl Responder {
+    match session.get::<i64>("user_id") {
+        Ok(Some(user_id)) => {
+            match sqlx::query!("SELECT username FROM users WHERE id = ?", user_id)
+                .fetch_one(pool.get_ref())
+                .await
+            {
+                Ok(user) => HttpResponse::Ok().json(serde_json::json!({ "username": user.username })),
+                Err(_) => HttpResponse::InternalServerError().finish(),
+            }
+        }
+        _ => HttpResponse::Unauthorized().finish(),
+    }
 }
 
 #[get("/discord/login")]
@@ -108,6 +126,14 @@ async fn discord_callback(
 
     session.insert("user_id", user_id).unwrap();
 
+    HttpResponse::Found()
+        .append_header(("Location", "/"))
+        .finish()
+}
+
+#[get("/logout")]
+async fn logout(session: Session) -> impl Responder {
+    session.clear();
     HttpResponse::Found()
         .append_header(("Location", "/"))
         .finish()
