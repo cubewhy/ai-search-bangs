@@ -34,7 +34,7 @@ pub enum SearchError {
 }
 
 #[async_trait]
-pub trait SearchService {
+pub trait SearchService: Send + Sync {
     async fn generate_query(
         &self,
         query: &str,
