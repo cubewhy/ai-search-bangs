@@ -5,20 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback" async defer></script>
 </head>
 <body>
     <div class="container">
         <h1>AI Search</h1>
         <p>Please log in to continue</p>
-        <form action="/auth/discord/login" method="get">
-            <div class="cf-turnstile" data-sitekey="YOUR_SITE_KEY" data-callback="onTurnstileSuccess"></div>
+        <form id="login-form" action="/auth/discord/login" method="get">
+            <div id="turnstile-container"></div>
             <button type="submit" class="discord-btn" id="login-btn" disabled>Login with Discord</button>
         </form>
     </div>
     <script>
-        function onTurnstileSuccess(token) {
-            document.getElementById('login-btn').disabled = false;
+        function onloadTurnstileCallback() {
+            fetch('/auth/config')
+                .then(response => response.json())
+                .then(data => {
+                    turnstile.render('#turnstile-container', {
+                        sitekey: data.turnstile_site_key,
+                        callback: function(token) {
+                            document.getElementById('login-btn').disabled = false;
+                        },
+                    });
+                });
         }
     </script>
 </body>

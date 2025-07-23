@@ -1,11 +1,16 @@
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use actix_session::Session;
 use actix_web::{get, web, HttpResponse, Responder, Scope};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 use crate::service::{auth::AuthService, turnstile::TurnstileService};
+
+#[derive(Serialize)]
+struct ConfigResponse {
+    turnstile_site_key: String,
+}
 
 #[derive(Deserialize)]
 pub struct AuthQuery {
@@ -20,8 +25,18 @@ pub struct CallbackQuery {
 
 pub fn service() -> Scope {
     web::scope("/auth")
+        .service(config)
         .service(discord_login)
         .service(discord_callback)
+}
+
+#[get("/config")]
+async fn config() -> impl Responder {
+    let site_key = env::var("CLOUDFLARE_TURNSTILE_SITE_KEY")
+        .expect("CLOUDFLARE_TURNSTILE_SITE_KEY must be set");
+    HttpResponse::Ok().json(ConfigResponse {
+        turnstile_site_key: site_key,
+    })
 }
 
 #[get("/discord/login")]
