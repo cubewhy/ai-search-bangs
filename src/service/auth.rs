@@ -87,10 +87,18 @@ impl AuthService for AuthServiceImpl {
             .get("https://discord.com/api/users/@me")
             .bearer_auth(access_token)
             .send()
-            .await?
-            .json::<DiscordUser>()
             .await?;
 
-        Ok(response)
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            log::error!("Discord API error: {}", error_text);
+            return Err(AuthError::Reqwest(reqwest::Error::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Discord API returned an error",
+            ))));
+        }
+
+        let user = response.json::<DiscordUser>().await?;
+        Ok(user)
     }
 }
