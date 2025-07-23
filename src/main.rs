@@ -56,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::from(search_service.clone()))
+            .app_data(web::Data::new(search_service.clone()))
             .app_data(web::Data::new(rate_limiter.clone()))
             .service(controller::search::service())
             .service(fs::Files::new("/static", "static"))
