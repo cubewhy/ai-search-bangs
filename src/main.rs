@@ -2,7 +2,7 @@ use std::{env, num::NonZeroU32, sync::Arc};
 
 use actix_files as fs;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{cookie::Key, web, App, HttpServer};
 use governor::{clock::DefaultClock, Quota, RateLimiter};
 use llm::Gemini;
 use log::info;
