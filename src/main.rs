@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     let llm_model = env::var("LLM_MODEL").unwrap_or("gemini-1.5-flash".to_string());
 
     let llm = Gemini::new(gemini_api, gemini_key, temperature);
-    let search_service = Arc::new(SearchServiceImpl::new(
+    let search_service: Arc<dyn service::search::SearchService> = Arc::new(SearchServiceImpl::new(
         Box::new(llm),
         llm_model,
         prompt_file,
