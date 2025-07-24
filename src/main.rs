@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
         Box::new(llm),
         llm_model,
         prompt_file,
-        Arc::new(pool.clone()),
+        pool.clone(),
     ));
 
     let discord_client_id = env::var("DISCORD_CLIENT_ID").expect("DISCORD_CLIENT_ID must be set");

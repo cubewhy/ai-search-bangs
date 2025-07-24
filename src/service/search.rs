@@ -46,7 +46,7 @@ pub struct SearchServiceImpl {
     llm: Box<dyn LargeLanguageModel>,
     llm_model: String,
     prompt_template: String,
-    pool: Arc<SqlitePool>,
+    pool: SqlitePool,
 }
 
 impl SearchServiceImpl {
@@ -54,7 +54,7 @@ impl SearchServiceImpl {
         llm: Box<dyn LargeLanguageModel>,
         llm_model: String,
         prompt_file: String,
-        pool: Arc<SqlitePool>,
+        pool: SqlitePool,
     ) -> Self {
         let prompt_template = std::fs::read_to_string(prompt_file).expect("Failed to read prompt file");
         Self {
@@ -80,7 +80,7 @@ impl SearchService for SearchServiceImpl {
             search_engine,
             language
         )
-        .fetch_optional(self.pool.as_ref())
+        .fetch_optional(&self.pool)
         .await?;
 
         if let Some(record) = cached_result {
@@ -158,7 +158,7 @@ impl SearchService for SearchServiceImpl {
             language,
             url
         )
-        .execute(self.pool.as_ref())
+        .execute(&self.pool)
         .await?;
 
         Ok(GenerateQueryResult { url })
