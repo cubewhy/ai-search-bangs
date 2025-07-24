@@ -21,7 +21,7 @@ pub struct DuckduckgoLite {}
 
 impl SearchEngine for DuckduckgoLite {
     fn generate_url(&self, query: &str) -> String {
-        format!("https://lite.duckduckgo.com/lite?q={query}")
+        format!("https://lite.duckduckgo.com/?q={query}")
     }
 
     fn name(&self) -> String {
@@ -34,7 +34,7 @@ pub struct DuckduckgoHtml {}
 
 impl SearchEngine for DuckduckgoHtml {
     fn generate_url(&self, query: &str) -> String {
-        format!("https://html.duckduckgo.com/html?q={query}")
+        format!("https://html.duckduckgo.com/?q={query}")
     }
 
     fn name(&self) -> String {
@@ -47,7 +47,7 @@ pub struct DuckduckgoNoAi {}
 
 impl SearchEngine for DuckduckgoNoAi {
     fn generate_url(&self, query: &str) -> String {
-        format!("https://noai.duckduckgo.com/html?q={query}")
+        format!("https://noai.duckduckgo.com/?q={query}")
     }
 
     fn name(&self) -> String {
