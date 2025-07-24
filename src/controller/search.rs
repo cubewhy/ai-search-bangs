@@ -1,40 +1,79 @@
-use std::env;
+use std::{env, sync::Arc};
 
+use actix_session::Session;
 use actix_web::{
-    HttpRequest, HttpResponse, Responder, Scope,
     body::BoxBody,
     get,
     web::{self, Redirect},
+    HttpRequest, HttpResponse, Responder, Scope,
 };
+use governor::{clock::DefaultClock, RateLimiter, state::direct::NotKeyed, state::InMemoryState};
+use sqlx::SqlitePool;
 
 use crate::{
-    llm::Gemini,
     model::AiSearchQuery,
-    service::search::{SearchService, SearchServiceImpl},
+    service::search::SearchService,
 };
-
-struct Context {
-    pub search_service: Box<dyn SearchService>,
-}
 
 #[get("ai")]
 async fn ai_search(
     req: HttpRequest,
     query: web::Query<AiSearchQuery>,
-    context: web::Data<Context>,
+    search_service: web::Data<Arc<dyn SearchService>>,
+    rate_limiter: web::Data<Option<Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
+    pool: web::Data<SqlitePool>,
+    session: Session,
 ) -> impl Responder {
+    let user_id = match session.get::<i64>("user_id") {
+        Ok(Some(id)) => id,
+        _ => {
+            return HttpResponse::Found()
+                .append_header(("Location", "/login.html"))
+                .finish();
+        }
+    };
+
+    if let Some(limiter) = rate_limiter.as_ref() {
+        if let Err(_) = limiter.check() {
+            return HttpResponse::TooManyRequests().body("Too many requests");
+        }
+    }
+
+    let daily_limit: i32 = env::var("DAILY_REQUEST_LIMIT")
+        .unwrap_or("50".to_string())
+        .parse()
+        .unwrap_or(50);
+
+    let mut user = match sqlx::query!("SELECT * FROM users WHERE id = ?", user_id)
+        .fetch_one(pool.get_ref())
+        .await
+    {
+        Ok(user) => user,
+        Err(e) => {
+            log::error!("Failed to fetch user: {}", e);
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
+
+    let today = chrono::Utc::now().date_naive();
+    if user.last_request_date != today {
+        user.request_count = 0;
+        user.last_request_date = today;
+    }
+
+    if user.request_count >= daily_limit as i64 {
+        return HttpResponse::TooManyRequests().body("Daily request limit exceeded");
+    }
+
     let request = query.into_inner();
-    // do query
     let Some(query) = request.q else {
         return HttpResponse::BadRequest().body("no search content provided");
     };
-    let Some(search_engine) = request.service else {
-        return HttpResponse::BadRequest().body("no search engine provided");
-    };
+    let search_engine = request.engine.unwrap_or("google".to_string());
+    let language = request.language.unwrap_or("English".to_string());
 
-    let result = context
-        .search_service
-        .generate_query(&query, &search_engine)
+    let result = search_service
+        .generate_query(&query, &search_engine, &language)
         .await;
 
     let result = match result {
@@ -42,22 +81,27 @@ async fn ai_search(
         Err(err) => return HttpResponse::InternalServerError().body(format!("{err:?}")),
     };
 
+    match sqlx::query!(
+        "UPDATE users SET request_count = request_count + 1, last_request_date = ? WHERE id = ?",
+        today,
+        user_id
+    )
+    .execute(pool.get_ref())
+    .await
+    {
+        Ok(_) => (),
+        Err(e) => {
+            log::error!("Failed to update user request count: {}", e);
+            // Decide if you want to fail the whole request here
+        }
+    }
+
     Redirect::to(result.url)
         .temporary()
         .respond_to(&req)
         .set_body(BoxBody::new("307 Temporary Redirect"))
 }
 
-pub fn scope() -> Scope {
-    let api = env::var("GEMINI_API").unwrap_or("https://generativelanguage.googleapis.com".to_string());
-    let api_key = env::var("GEMINI_KEY").expect("No api key provided");
-    let llm = Gemini::new(&api, &api_key);
-    let llm_model = "gemini-2.5-flash-lite-preview-06-17";
-
-    let context = Context {
-        search_service: Box::new(SearchServiceImpl::new(Box::new(llm), llm_model.to_string())),
-    };
-    Scope::new("/search")
-        .app_data(web::Data::new(context))
-        .service(ai_search)
+pub fn service() -> Scope {
+    web::scope("/search").service(ai_search)
 }

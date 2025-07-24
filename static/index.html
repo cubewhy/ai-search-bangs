@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="user-status">
+        <button id="theme-toggle">Toggle Theme</button>
+    </div>
+    <div class="container">
+        <h1>AI Search</h1>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Ask me anything...">
+            <button id="search-button">Search</button>
+        </div>
+        <div class="options">
+            <div class="option">
+                <label for="language-select">Language:</label>
+                <select id="language-select">
+                    <option value="English">English</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                </select>
+            </div>
+            <div class="option">
+                <label for="engine-select">Search Engine:</label>
+                <select id="engine-select">
+                    <option value="google">Google</option>
+                    <option value="bing">Bing</option>
+                    <option value="duckduckgo">DuckDuckGo</option>
+                    <option value="baidu">Baidu</option>
+                    <option value="sogou">Sogou</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

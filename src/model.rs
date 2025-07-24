@@ -3,7 +3,8 @@ pub mod search;
 #[derive(serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct AiSearchQuery {
     pub q: Option<String>,
-    pub service: Option<String>,
+    pub engine: Option<String>,
+    pub language: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -15,4 +16,5 @@ pub struct GenerateQueryResult {
 pub struct UserQueryRequest {
     pub engine: String,
     pub prompt: String,
+    pub language: String,
 }
