@@ -90,6 +90,7 @@ impl SearchService for SearchServiceImpl {
                 "ddg" | "duckduckgo" => Box::new(Duckduckgo::default()),
                 "ddg-lite" | "duckduckgo-lite" => Box::new(DuckduckgoLite::default()),
                 "ddg-html" | "duckduckgo-html" => Box::new(DuckduckgoHtml::default()),
+                "ddg-noai" | "duckduckgo-noai" => Box::new(DuckduckgoNoAi::default()),
                 "google" => Box::new(Google::default()),
                 "baidu" => Box::new(Baidu::default()),
                 "bing" => Box::new(Bing::default()),

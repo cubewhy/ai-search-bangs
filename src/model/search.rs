@@ -43,6 +43,19 @@ impl SearchEngine for DuckduckgoHtml {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct DuckduckgoNoAi {}
+
+impl SearchEngine for DuckduckgoNoAi {
+    fn generate_url(&self, query: &str) -> String {
+        format!("https://noai.duckduckgo.com/?q={query}")
+    }
+
+    fn name(&self) -> String {
+        "duckduckgo".to_string()
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct Google {}
 
 impl SearchEngine for Google {
