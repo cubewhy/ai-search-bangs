@@ -101,7 +101,7 @@ impl SearchService for SearchServiceImpl {
             "Generate query using engine {} with prompt `{}` and language `{}`",
             search_engine_instance.name(),
             query_prompt,
-            language.unwrap_or("<auto detect>")
+            language.unwrap_or("<auto detect>"),
         );
 
         let user_query_request = UserQueryRequest {

@@ -68,7 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const language = languageSelect.value;
         const engine = engineSelect.value;
 
-        const searchUrl = `/search/ai?q=${encodeURIComponent(query)}&engine=${engine}&language=${language}`;
+        let searchUrl = `/search/ai?q=${encodeURIComponent(query)}&engine=${engine}`;
+        if (language !== "unset") {
+            searchUrl += `&language=${language}`;
+        }
+
         window.location.href = searchUrl;
     };
 
