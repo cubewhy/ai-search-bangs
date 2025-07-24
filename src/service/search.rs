@@ -9,10 +9,10 @@ use tokio::sync::Mutex;
 use crate::{
     llm::{LLMError, LLMPrompt, LargeLanguageModel},
     model::{
+        GenerateQueryResult, UserQueryRequest,
         search::{
             Baidu, Bing, Duckduckgo, DuckduckgoHtml, DuckduckgoLite, Google, SearchEngine, Sogou,
         },
-        GenerateQueryResult, UserQueryRequest,
     },
 };
 
@@ -39,7 +39,7 @@ pub trait SearchService: Send + Sync {
         &self,
         query: &str,
         search_engine: &str,
-        language: &str,
+        language: Option<&str>,
     ) -> Result<GenerateQueryResult, SearchError>;
 }
 
@@ -47,19 +47,13 @@ pub struct SearchServiceImpl {
     llm: Box<dyn LargeLanguageModel>,
     llm_model: String,
     prompt_template: String,
-    cache: Arc<Mutex<LruCache<(String, String, String), String>>>,
+    cache: Arc<Mutex<LruCache<(String, String, Option<String>), String>>>,
 }
 
 impl SearchServiceImpl {
-    pub fn new(
-        llm: Box<dyn LargeLanguageModel>,
-        llm_model: String,
-        prompt_file: String,
-    ) -> Self {
+    pub fn new(llm: Box<dyn LargeLanguageModel>, llm_model: String, prompt_file: String) -> Self {
         let prompt_template = fs::read_to_string(prompt_file).expect("Failed to read prompt file");
-        let cache = Arc::new(Mutex::new(LruCache::new(
-            NonZeroUsize::new(100).unwrap(),
-        )));
+        let cache = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap())));
         Self {
             llm,
             llm_model,
@@ -75,12 +69,12 @@ impl SearchService for SearchServiceImpl {
         &self,
         query_prompt: &str,
         search_engine: &str,
-        language: &str,
+        language: Option<&str>,
     ) -> Result<GenerateQueryResult, SearchError> {
         let cache_key = (
             query_prompt.to_string(),
             search_engine.to_string(),
-            language.to_string(),
+            language.map(|s| s.to_string()),
         );
         let mut cache = self.cache.lock().await;
         if let Some(cached_url) = cache.get(&cache_key) {
@@ -107,13 +101,13 @@ impl SearchService for SearchServiceImpl {
             "Generate query using engine {} with prompt `{}` and language `{}`",
             search_engine_instance.name(),
             query_prompt,
-            language
+            language.unwrap_or("<auto detect>")
         );
 
         let user_query_request = UserQueryRequest {
             engine: search_engine_instance.name(),
             prompt: query_prompt.to_string(),
-            language: language.to_string(),
+            language: language.map(|s| s.to_string()),
         };
 
         let contents = vec![
@@ -122,10 +116,7 @@ impl SearchService for SearchServiceImpl {
                 "model",
                 "```json\n{\n  \"query\": \"!w history of artificial intelligence\"\n}\n```",
             ),
-            LLMPrompt::new(
-                "user",
-                &serde_json::to_string_pretty(&user_query_request)?,
-            ),
+            LLMPrompt::new("user", &serde_json::to_string_pretty(&user_query_request)?),
         ];
 
         let ai_response = self.llm.query(&self.llm_model, &contents).await;
