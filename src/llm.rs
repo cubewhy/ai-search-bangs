@@ -73,7 +73,7 @@ impl LargeLanguageModel for Gemini {
             .client
             .post(format!(
                 "{}/v1beta/models/{}:generateContent",
-                self.api, model_id, &self.api_key
+                self.api, model_id
             ))
             .header("x-goog-api-key", &self.api_key)
             .json(&request_body)
