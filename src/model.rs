@@ -16,5 +16,5 @@ pub struct GenerateQueryResult {
 pub struct UserQueryRequest {
     pub engine: String,
     pub prompt: String,
-    pub language: Option<String>,
+    pub language: String,
 }

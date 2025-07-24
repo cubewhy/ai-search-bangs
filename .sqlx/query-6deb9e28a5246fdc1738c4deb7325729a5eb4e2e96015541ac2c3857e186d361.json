@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT url FROM cache WHERE query_prompt = ? AND search_engine = ? AND language = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "url",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6deb9e28a5246fdc1738c4deb7325729a5eb4e2e96015541ac2c3857e186d361"
+}
