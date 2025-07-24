@@ -1,18 +1,17 @@
-use std::{fs, num::NonZeroUsize, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use log::info;
-use lru::LruCache;
+use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::sync::Mutex;
 
 use crate::{
     llm::{LLMError, LLMPrompt, LargeLanguageModel},
     model::{
-        GenerateQueryResult, UserQueryRequest,
         search::{
             Baidu, Bing, Duckduckgo, DuckduckgoHtml, DuckduckgoLite, Google, SearchEngine, Sogou,
         },
+        GenerateQueryResult, UserQueryRequest,
     },
 };
 
@@ -29,8 +28,8 @@ pub enum SearchError {
     UnknownEngine(String),
     #[error("Failed to deserialize response")]
     Deserialize(#[from] serde_json::Error),
-    #[error("Failed to read prompt file")]
-    Io(#[from] std::io::Error),
+    #[error("Database error")]
+    Sqlx(#[from] sqlx::Error),
 }
 
 #[async_trait]
@@ -39,7 +38,7 @@ pub trait SearchService: Send + Sync {
         &self,
         query: &str,
         search_engine: &str,
-        language: Option<&str>,
+        language: &str,
     ) -> Result<GenerateQueryResult, SearchError>;
 }
 
@@ -47,18 +46,22 @@ pub struct SearchServiceImpl {
     llm: Box<dyn LargeLanguageModel>,
     llm_model: String,
     prompt_template: String,
-    cache: Arc<Mutex<LruCache<(String, String, Option<String>), String>>>,
+    pool: Arc<SqlitePool>,
 }
 
 impl SearchServiceImpl {
-    pub fn new(llm: Box<dyn LargeLanguageModel>, llm_model: String, prompt_file: String) -> Self {
-        let prompt_template = fs::read_to_string(prompt_file).expect("Failed to read prompt file");
-        let cache = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap())));
+    pub fn new(
+        llm: Box<dyn LargeLanguageModel>,
+        llm_model: String,
+        prompt_file: String,
+        pool: Arc<SqlitePool>,
+    ) -> Self {
+        let prompt_template = std::fs::read_to_string(prompt_file).expect("Failed to read prompt file");
         Self {
             llm,
             llm_model,
             prompt_template,
-            cache,
+            pool,
         }
     }
 }
@@ -69,21 +72,21 @@ impl SearchService for SearchServiceImpl {
         &self,
         query_prompt: &str,
         search_engine: &str,
-        language: Option<&str>,
+        language: &str,
     ) -> Result<GenerateQueryResult, SearchError> {
-        let cache_key = (
-            query_prompt.to_string(),
-            search_engine.to_string(),
-            language.map(|s| s.to_string()),
-        );
-        let mut cache = self.cache.lock().await;
-        if let Some(cached_url) = cache.get(&cache_key) {
+        let cached_result = sqlx::query!(
+            "SELECT url FROM cache WHERE query_prompt = ? AND search_engine = ? AND language = ?",
+            query_prompt,
+            search_engine,
+            language
+        )
+        .fetch_optional(self.pool.as_ref())
+        .await?;
+
+        if let Some(record) = cached_result {
             info!("Cache hit for query: {}", query_prompt);
-            return Ok(GenerateQueryResult {
-                url: cached_url.clone(),
-            });
+            return Ok(GenerateQueryResult { url: record.url });
         }
-        drop(cache);
 
         let search_engine_instance: Box<dyn SearchEngine> =
             match search_engine.to_lowercase().as_str() {
@@ -101,13 +104,13 @@ impl SearchService for SearchServiceImpl {
             "Generate query using engine {} with prompt `{}` and language `{}`",
             search_engine_instance.name(),
             query_prompt,
-            language.unwrap_or("<auto detect>"),
+            language
         );
 
         let user_query_request = UserQueryRequest {
             engine: search_engine_instance.name(),
             prompt: query_prompt.to_string(),
-            language: language.map(|s| s.to_string()),
+            language: language.to_string(),
         };
 
         let contents = vec![
@@ -116,7 +119,10 @@ impl SearchService for SearchServiceImpl {
                 "model",
                 "```json\n{\n  \"query\": \"!w history of artificial intelligence\"\n}\n```",
             ),
-            LLMPrompt::new("user", &serde_json::to_string_pretty(&user_query_request)?),
+            LLMPrompt::new(
+                "user",
+                &serde_json::to_string_pretty(&user_query_request)?,
+            ),
         ];
 
         let ai_response = self.llm.query(&self.llm_model, &contents).await;
@@ -145,8 +151,15 @@ impl SearchService for SearchServiceImpl {
             &response.query
         );
 
-        let mut cache = self.cache.lock().await;
-        cache.put(cache_key, url.clone());
+        sqlx::query!(
+            "INSERT INTO cache (query_prompt, search_engine, language, url) VALUES (?, ?, ?, ?)",
+            query_prompt,
+            search_engine,
+            language,
+            url
+        )
+        .execute(self.pool.as_ref())
+        .await?;
 
         Ok(GenerateQueryResult { url })
     }
