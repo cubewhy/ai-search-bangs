@@ -9,7 +9,7 @@ use crate::{
     llm::{LLMError, LLMPrompt, LargeLanguageModel},
     model::{
         search::{
-            Baidu, Bing, Duckduckgo, DuckduckgoHtml, DuckduckgoLite, Google, SearchEngine, Sogou,
+            Baidu, Bing, Duckduckgo, DuckduckgoHtml, DuckduckgoLite, DuckduckgoNoAi, Google, SearchEngine, Sogou,
         },
         GenerateQueryResult, UserQueryRequest,
     },
