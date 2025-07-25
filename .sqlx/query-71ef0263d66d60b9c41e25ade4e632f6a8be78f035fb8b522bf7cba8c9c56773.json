@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO cache (query_prompt, search_engine, language, url) VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "71ef0263d66d60b9c41e25ade4e632f6a8be78f035fb8b522bf7cba8c9c56773"
+}

@@ -62,6 +62,7 @@ async fn discord_login(
     query: web::Query<AuthQuery>,
     auth_service: web::Data<Arc<dyn AuthService>>,
     turnstile_service: web::Data<Arc<TurnstileService>>,
+    session: Session,
 ) -> impl Responder {
     let is_valid = match turnstile_service.verify(&query.turnstile_response).await {
         Ok(valid) => valid,
@@ -73,6 +74,11 @@ async fn discord_login(
 
     if !is_valid {
         return HttpResponse::BadRequest().body("Invalid Turnstile token");
+    }
+
+    // Set a flag in the session to indicate that Turnstile was passed
+    if session.insert("turnstile_verified", true).is_err() {
+        return HttpResponse::InternalServerError().finish();
     }
 
     let discord_auth_url = auth_service.get_discord_auth_url();
@@ -88,6 +94,17 @@ async fn discord_callback(
     pool: web::Data<SqlitePool>,
     session: Session,
 ) -> impl Responder {
+    // Check if the Turnstile verification flag is in the session
+    if session.get::<bool>("turnstile_verified").unwrap_or(None) != Some(true) {
+        // If not, redirect to login, as the user bypassed the check
+        return HttpResponse::Found()
+            .append_header(("Location", "/login.html"))
+            .finish();
+    }
+
+    // Clear the flag immediately to prevent reuse
+    session.remove("turnstile_verified");
+
     let access_token = match auth_service.exchange_code_for_token(&query.code).await {
         Ok(token) => token,
         Err(e) => {

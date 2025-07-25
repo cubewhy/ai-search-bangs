@@ -47,7 +47,7 @@ pub struct DuckduckgoNoAi {}
 
 impl SearchEngine for DuckduckgoNoAi {
     fn generate_url(&self, query: &str) -> String {
-        format!("https://noai.duckduckgo.com/?q={query}")
+        format!("https://noai.duckduckgo.com/html?q={query}")
     }
 
     fn name(&self) -> String {

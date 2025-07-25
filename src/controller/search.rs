@@ -2,15 +2,18 @@ use std::{env, sync::Arc};
 
 use actix_session::Session;
 use actix_web::{
-    HttpRequest, HttpResponse, Responder, Scope,
     body::BoxBody,
     get,
     web::{self, Redirect},
+    HttpRequest, HttpResponse, Responder, Scope,
 };
-use governor::{RateLimiter, clock::DefaultClock, state::InMemoryState, state::direct::NotKeyed};
+use governor::{clock::DefaultClock, RateLimiter, state::direct::NotKeyed, state::InMemoryState};
 use sqlx::SqlitePool;
 
-use crate::{model::AiSearchQuery, service::search::SearchService};
+use crate::{
+    model::AiSearchQuery,
+    service::search::SearchService,
+};
 
 #[get("ai")]
 async fn ai_search(
@@ -67,13 +70,10 @@ async fn ai_search(
         return HttpResponse::BadRequest().body("no search content provided");
     };
     let search_engine = request.engine.unwrap_or("google".to_string());
+    let language = request.language.unwrap_or("English".to_string());
 
     let result = search_service
-        .generate_query(
-            &query,
-            &search_engine,
-            request.language.as_ref().map(|x| x.as_str()),
-        )
+        .generate_query(&query, &search_engine, &language)
         .await;
 
     let result = match result {
