@@ -1,8 +1,11 @@
 use std::string::FromUtf8Error;
 
 use async_trait::async_trait;
+use ::openai::OpenAiError;
 use reqwest::Client;
 use thiserror::Error;
+
+pub mod openai;
 
 #[derive(Error, Debug)]
 pub enum LLMError {
@@ -14,6 +17,15 @@ pub enum LLMError {
 
     #[error("Failed to deserialize")]
     Serde(#[from] serde_json::Error),
+
+    #[error("Bad role {0}")]
+    BadRole(String),
+
+    #[error("OpenAI error")]
+    OpenAI(#[from] OpenAiError),
+
+    #[error("Empty response from ai provider")]
+    EmptyResponse,
 }
 
 #[derive(Clone, Debug)]

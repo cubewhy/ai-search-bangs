@@ -1,18 +1,46 @@
 use std::{env, num::NonZeroU32, sync::Arc};
 
 use actix_files as fs;
-use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, web, App, HttpServer};
-use governor::{clock::DefaultClock, Quota, RateLimiter};
+use actix_session::{SessionMiddleware, storage::CookieSessionStore};
+use actix_web::{App, HttpServer, cookie::Key, web};
+use governor::{Quota, RateLimiter, clock::DefaultClock};
 use llm::Gemini;
 use log::info;
 use service::{auth::AuthServiceImpl, search::SearchServiceImpl, turnstile::TurnstileService};
 use sqlx::SqlitePool;
 
+use crate::llm::{openai::OpenAI, LargeLanguageModel};
+
 mod controller;
 pub mod llm;
 pub mod model;
 pub mod service;
+
+fn resolve_ai_provider_from_env() -> Box<dyn LargeLanguageModel> {
+    let ai_service = env::var("AI_SERVICE").expect("No ai service provided");
+
+    match ai_service.as_str() {
+        "gemini" => {
+            let gemini_key = env::var("GEMINI_KEY").expect("Gemini key is not set");
+            let gemini_api =
+                env::var("GEMINI_API").unwrap_or("https://generativelanguage.googleapis.com".to_string());
+            let gemini_temperature: f32 = env::var("GEMINI_TEMPERATURE")
+                .unwrap_or("0".to_string())
+                .parse()
+                .expect("Failed to parse temperature");
+            Box::new(Gemini::new(gemini_api, gemini_key, gemini_temperature))
+        }
+        "openai" => {
+            let openai_token = env::var("OPENAI_TOKEN").expect("Openai key is not set");
+            let openai_api =
+                env::var("OPENAI_API").unwrap_or("https://".to_string());
+            Box::new(OpenAI::new(&openai_api, &openai_token))
+        }
+        _ => panic!("Unknown AI Service {ai_service}"),
+    }
+
+
+}
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
@@ -28,23 +56,25 @@ async fn main() -> anyhow::Result<()> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = SqlitePool::connect(&database_url).await?;
 
-    let session_secret_key = env::var("SESSION_SECRET_KEY").expect("SESSION_SECRET_KEY must be set");
+    let session_secret_key =
+        env::var("SESSION_SECRET_KEY").expect("SESSION_SECRET_KEY must be set");
     let session_key = Key::from(session_secret_key.as_bytes());
 
-    let gemini_key = env::var("GEMINI_KEY").expect("Gemini key is not set");
-    let gemini_api =
-        env::var("GEMINI_API").unwrap_or("https://generativelanguage.googleapis.com".to_string());
-    let temperature: f32 = env::var("TEMPERATURE")
-        .unwrap_or("0".to_string())
-        .parse()
-        .expect("Failed to parse temperature");
     let prompt_file = env::var("PROMPT_FILE").unwrap_or("prompt.md".to_string());
     let requests_per_minute: i32 = env::var("REQUESTS_PER_MINUTE")
         .unwrap_or("-1".to_string())
         .parse()
         .expect("Failed to parse requests per minute");
 
-    let rate_limiter: Option<Arc<RateLimiter<governor::state::direct::NotKeyed, governor::state::InMemoryState, DefaultClock>>> = if requests_per_minute > 0 {
+    let rate_limiter: Option<
+        Arc<
+            RateLimiter<
+                governor::state::direct::NotKeyed,
+                governor::state::InMemoryState,
+                DefaultClock,
+            >,
+        >,
+    > = if requests_per_minute > 0 {
         let quota = Quota::per_minute(NonZeroU32::new(requests_per_minute as u32).unwrap());
         Some(Arc::new(RateLimiter::direct(quota)))
     } else {
@@ -53,9 +83,10 @@ async fn main() -> anyhow::Result<()> {
 
     let llm_model = env::var("LLM_MODEL").unwrap_or("gemini-1.5-flash".to_string());
 
-    let llm = Gemini::new(gemini_api, gemini_key, temperature);
+    // let llm = Gemini::new(gemini_api, gemini_key, temperature);
+    let llm = resolve_ai_provider_from_env();
     let search_service: Arc<dyn service::search::SearchService> = Arc::new(SearchServiceImpl::new(
-        Box::new(llm),
+        llm,
         llm_model,
         prompt_file,
         pool.clone(),
@@ -72,8 +103,8 @@ async fn main() -> anyhow::Result<()> {
         discord_redirect_uri,
     ));
 
-    let turnstile_secret_key =
-        env::var("CLOUDFLARE_TURNSTILE_SECRET_KEY").expect("CLOUDFLARE_TURNSTILE_SECRET_KEY must be set");
+    let turnstile_secret_key = env::var("CLOUDFLARE_TURNSTILE_SECRET_KEY")
+        .expect("CLOUDFLARE_TURNSTILE_SECRET_KEY must be set");
     let turnstile_service = Arc::new(TurnstileService::new(turnstile_secret_key));
 
     info!("Start AI search bangs service at {host}:{port}");

@@ -8,7 +8,6 @@ use actix_web::{
     HttpRequest, HttpResponse, Responder, Scope,
 };
 use governor::{clock::DefaultClock, RateLimiter, state::direct::NotKeyed, state::InMemoryState};
-use sqlx::SqlitePool;
 
 use crate::{
     model::AiSearchQuery,
@@ -20,50 +19,50 @@ async fn ai_search(
     req: HttpRequest,
     query: web::Query<AiSearchQuery>,
     search_service: web::Data<Arc<dyn SearchService>>,
-    rate_limiter: web::Data<Option<Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
-    pool: web::Data<SqlitePool>,
-    session: Session,
+    // rate_limiter: web::Data<Option<Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
+    // pool: web::Data<SqlitePool>,
+    // session: Session,
 ) -> impl Responder {
-    let user_id = match session.get::<i64>("user_id") {
-        Ok(Some(id)) => id,
-        _ => {
-            return HttpResponse::Found()
-                .append_header(("Location", "/login.html"))
-                .finish();
-        }
-    };
+    // let user_id = match session.get::<i64>("user_id") {
+    //     Ok(Some(id)) => id,
+    //     _ => {
+    //         return HttpResponse::Found()
+    //             .append_header(("Location", "/login.html"))
+    //             .finish();
+    //     }
+    // };
 
-    if let Some(limiter) = rate_limiter.as_ref() {
-        if let Err(_) = limiter.check() {
-            return HttpResponse::TooManyRequests().body("Too many requests");
-        }
-    }
+    // if let Some(limiter) = rate_limiter.as_ref() {
+    //     if let Err(_) = limiter.check() {
+    //         return HttpResponse::TooManyRequests().body("Too many requests");
+    //     }
+    // }
 
-    let daily_limit: i32 = env::var("DAILY_REQUEST_LIMIT")
-        .unwrap_or("50".to_string())
-        .parse()
-        .unwrap_or(50);
+    // let daily_limit: i32 = env::var("DAILY_REQUEST_LIMIT")
+    //     .unwrap_or("50".to_string())
+    //     .parse()
+    //     .unwrap_or(50);
 
-    let mut user = match sqlx::query!("SELECT * FROM users WHERE id = ?", user_id)
-        .fetch_one(pool.get_ref())
-        .await
-    {
-        Ok(user) => user,
-        Err(e) => {
-            log::error!("Failed to fetch user: {}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
+    // let mut user = match sqlx::query!("SELECT * FROM users WHERE id = ?", user_id)
+    //     .fetch_one(pool.get_ref())
+    //     .await
+    // {
+    //     Ok(user) => user,
+    //     Err(e) => {
+    //         log::error!("Failed to fetch user: {}", e);
+    //         return HttpResponse::InternalServerError().finish();
+    //     }
+    // };
 
-    let today = chrono::Utc::now().date_naive();
-    if user.last_request_date != today {
-        user.request_count = 0;
-        user.last_request_date = today;
-    }
+    // let today = chrono::Utc::now().date_naive();
+    // if user.last_request_date != today {
+    //     user.request_count = 0;
+    //     user.last_request_date = today;
+    // }
 
-    if user.request_count >= daily_limit as i64 {
-        return HttpResponse::TooManyRequests().body("Daily request limit exceeded");
-    }
+    // if user.request_count >= daily_limit as i64 {
+    //     return HttpResponse::TooManyRequests().body("Daily request limit exceeded");
+    // }
 
     let request = query.into_inner();
     let Some(query) = request.q else {
@@ -81,20 +80,20 @@ async fn ai_search(
         Err(err) => return HttpResponse::InternalServerError().body(format!("{err:?}")),
     };
 
-    match sqlx::query!(
-        "UPDATE users SET request_count = request_count + 1, last_request_date = ? WHERE id = ?",
-        today,
-        user_id
-    )
-    .execute(pool.get_ref())
-    .await
-    {
-        Ok(_) => (),
-        Err(e) => {
-            log::error!("Failed to update user request count: {}", e);
-            // Decide if you want to fail the whole request here
-        }
-    }
+    // match sqlx::query!(
+    //     "UPDATE users SET request_count = request_count + 1, last_request_date = ? WHERE id = ?",
+    //     today,
+    //     user_id
+    // )
+    // .execute(pool.get_ref())
+    // .await
+    // {
+    //     Ok(_) => (),
+    //     Err(e) => {
+    //         log::error!("Failed to update user request count: {}", e);
+    //         // Decide if you want to fail the whole request here
+    //     }
+    // }
 
     Redirect::to(result.url)
         .temporary()
